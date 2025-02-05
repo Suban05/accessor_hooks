@@ -1,43 +1,154 @@
 # AccessorHooks
 
-TODO: Delete this and the text below, and describe your gem
-
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/accessor_hooks`. To experiment with that code, run `bin/console` for an interactive prompt.
+`AccessorHooks` is a Ruby module that allows you to define hooks (`before_change` and `after_change`) on attribute writers. These hooks can be used to execute custom logic when an attribute is modified.
 
 ## Installation
 
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
+Add this line to your application's Gemfile:
 
-Install the gem and add to the application's Gemfile by executing:
-
-```bash
-bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+```ruby
+gem 'accessor_hooks'
 ```
 
-If bundler is not being used to manage dependencies, install the gem by executing:
+And then execute:
 
-```bash
-gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+```sh
+bundle install
+```
+
+Or install it manually:
+
+```sh
+gem install accessor_hooks
 ```
 
 ## Usage
 
-TODO: Write usage instructions here
+Include `AccessorHooks` in your class and define hooks using `before_change` and `after_change`.
 
-## Development
+### Basic Example
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+```ruby
+class User
+  include AccessorHooks
+  
+  attr_reader :full_name
+  attr_accessor :first_name, :last_name
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+  after_change :update_full_name, on: %i[first_name last_name]
 
-## Contributing
+  private
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/accessor_hooks. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/[USERNAME]/accessor_hooks/blob/master/CODE_OF_CONDUCT.md).
+  def update_full_name
+    @full_name = [first_name, last_name].join(" ").strip
+  end
+end
+
+user = User.new
+user.first_name = "John"
+puts user.full_name # "John"
+
+user.last_name = "Doe"
+puts user.full_name # "John Doe"
+```
+
+### Using `before_change`
+
+`before_change` hooks run before the attribute value is updated.
+
+```ruby
+class Document
+  include AccessorHooks
+  
+  attr_reader :name
+  attr_accessor :title
+
+  before_change :clear_name, on: :title
+
+  private
+
+  def clear_name
+    @name = ""
+  end
+end
+
+doc = Document.new
+doc.title = "New Title"
+puts doc.name # ""
+```
+
+### Passing the New Attribute Value to the Hook
+
+The new value of the attribute can be passed to the hook method.
+
+```ruby
+class FileEntity
+  include AccessorHooks
+  
+  attr_reader :file_name
+  attr_accessor :name
+
+  after_change :update_file_name, on: :name
+
+  private
+
+  def update_file_name(name)
+    @file_name = "#{name}.pdf"
+  end
+end
+
+file = FileEntity.new
+file.name = "document"
+puts file.file_name # "document.pdf"
+```
+
+### Combining `before_change` and `after_change`
+
+```ruby
+class Record
+  include AccessorHooks
+  
+  attr_reader :ids
+  attr_accessor :id
+
+  before_change :validate_id, on: :id
+  after_change :store_id, on: :id
+
+  def initialize
+    @ids = []
+  end
+
+  private
+
+  def validate_id(value)
+    raise StandardError, "ID cannot be negative" if value < 0
+  end
+
+  def store_id
+    @ids << @id
+  end
+end
+
+record = Record.new
+record.id = 1
+puts record.ids.inspect # [1]
+
+begin
+  record.id = -1 # Raises StandardError
+rescue StandardError => e
+  puts e.message
+end
+```
+
+## Running Tests
+
+Run the test suite using RSpec:
+
+```sh
+bundle exec rspec
+```
 
 ## License
 
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+This project is licensed under the MIT License.
 
-## Code of Conduct
-
-Everyone interacting in the AccessorHooks project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/[USERNAME]/accessor_hooks/blob/master/CODE_OF_CONDUCT.md).
