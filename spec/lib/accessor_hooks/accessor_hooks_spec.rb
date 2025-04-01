@@ -200,4 +200,27 @@ RSpec.describe AccessorHooks do
     it { expect { entity.name = "Ivan" }.to change(entity, :status).to eq("ok") }
     it { expect { entity.name = "Ivan" }.to change(entity, :name).to eq("Ivan") }
   end
+
+  context "with lambda" do
+    let(:klass) do
+      Class.new do
+        include AccessorHooks
+
+        attr_accessor :name, :full_name, :status
+
+        before_change ->(this) { this.full_name = "" }, on: :name
+        after_change ->(this) { this.name = "new name" }, on: :status
+      end
+    end
+
+    let(:entity) { klass.new }
+
+    it {
+      expect(entity.name).to be_nil
+      expect { entity.name = "Ivan" }.to change(entity, :full_name).to be_empty
+      entity.full_name = "full name"
+      expect { entity.status = "ok" }.to change(entity, :name).to eq("new name")
+      expect(entity.full_name).to be_empty
+    }
+  end
 end
