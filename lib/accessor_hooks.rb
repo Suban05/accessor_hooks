@@ -56,10 +56,14 @@ module AccessorHooks
 
   def run_hook(attr, event, value)
     hook = self.class.event_hooks.dig(attr, event)
-    return unless hook && respond_to?(hook, true)
+    if hook.is_a?(Proc)
+      hook.call(self)
+    else
+      return unless hook && respond_to?(hook, true)
 
-    args = method(hook).arity == 1 ? [value] : []
-    send(hook, *args)
+      args = method(hook).arity == 1 ? [value] : []
+      send(hook, *args)
+    end
   end
 
   private :run_hook
